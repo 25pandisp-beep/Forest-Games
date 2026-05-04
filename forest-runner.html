@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forest Runner</title>
+
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  font-family:Arial;
+  background:#081c15;
+  color:white;
+}
+
+/* 🌲 BACKGROUND */
+#sky{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(#2d6a4f,#081c15);
+}
+
+#mist{
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.05), transparent 55%),
+    radial-gradient(circle at 70% 60%, rgba(255,255,255,0.03), transparent 60%);
+}
+
+/* trees */
+#trees{
+  position:absolute;
+  bottom:120px;
+  width:100%;
+  height:200px;
+  background:
+    radial-gradient(circle at 10% 100%, #0b1f14 80px, transparent 81px),
+    radial-gradient(circle at 30% 100%, #0b1f14 120px, transparent 121px),
+    radial-gradient(circle at 60% 100%, #0b1f14 140px, transparent 141px),
+    radial-gradient(circle at 85% 100%, #0b1f14 100px, transparent 101px);
+}
+
+/* ground */
+#ground{
+  position:absolute;
+  bottom:0;
+  width:100%;
+  height:120px;
+  background:linear-gradient(#2d6a4f,#1b4332);
+}
+
+/* 🏃 PLAYER */
+#player{
+  position:absolute;
+  bottom:120px;
+  left:80px;
+  width:30px;
+  height:50px;
+  z-index:10;
+  transform-origin:bottom;
+}
+
+/* head */
+.head{
+  width:18px;
+  height:18px;
+  background:#95d5b2;
+  border-radius:50%;
+  margin:0 auto;
+  box-shadow:0 0 10px rgba(0,255,150,0.3);
+}
+
+/* body */
+.body{
+  width:12px;
+  height:18px;
+  background:#52b788;
+  margin:2px auto;
+  border-radius:4px;
+}
+
+/* legs animation */
+.legs{
+  position:absolute;
+  bottom:0;
+  left:6px;
+  width:18px;
+  height:10px;
+  display:flex;
+  justify-content:space-between;
+}
+
+.leg{
+  width:4px;
+  height:10px;
+  background:#1b4332;
+  border-radius:2px;
+  transform-origin:top;
+}
+
+/* running animation */
+.running .leg.left{
+  animation:runL 0.25s infinite alternate;
+}
+.running .leg.right{
+  animation:runR 0.25s infinite alternate;
+}
+
+@keyframes runL{
+  from{transform:rotate(-25deg)}
+  to{transform:rotate(25deg)}
+}
+
+@keyframes runR{
+  from{transform:rotate(25deg)}
+  to{transform:rotate(-25deg)}
+}
+
+/* obstacles */
+.obstacle{
+  position:absolute;
+  bottom:120px;
+  border-radius:8px;
+  box-shadow:0 6px 10px rgba(0,0,0,0.4);
+}
+
+.log{
+  width:60px;
+  height:35px;
+  background:linear-gradient(90deg,#7f5539,#9c6644,#7f5539);
+}
+
+.rock{
+  width:40px;
+  height:45px;
+  background:radial-gradient(circle,#6c757d,#343a40);
+}
+
+/* score */
+#score{
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:20;
+}
+
+/* screens */
+.screen{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  background:rgba(0,0,0,0.6);
+  z-index:30;
+}
+
+button{
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  margin:6px;
+}
+
+/* ✨ motion effects */
+.shake{
+  animation:shake 0.15s;
+}
+
+@keyframes shake{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(-2px,1px)}
+  50%{transform:translate(2px,-1px)}
+  75%{transform:translate(-1px,2px)}
+  100%{transform:translate(0,0)}
+}
+
+/* glow trail */
+.trail{
+  position:absolute;
+  width:8px;
+  height:8px;
+  background:#95d5b2;
+  border-radius:50%;
+  opacity:0.6;
+  animation:fade 0.6s linear forwards;
+}
+
+@keyframes fade{
+  to{opacity:0; transform:translateY(-20px)}
+}
+</style>
+</head>
+
+<body>
+
+<div id="sky"></div>
+<div id="mist"></div>
+<div id="trees"></div>
+<div id="ground"></div>
+
+<!-- PLAYER -->
+<div id="player">
+  <div class="head"></div>
+  <div class="body"></div>
+  <div class="legs">
+    <div class="leg left"></div>
+    <div class="leg right"></div>
+  </div>
+</div>
+
+<div id="score">Score: 0</div>
+
+<div id="start" class="screen">
+  <h1>🌲 Forest Runner</h1>
+  <button onclick="startGame()">Start</button>
+</div>
+
+<div id="gameOver" class="screen" style="display:none;">
+  <h1>Game Over</h1>
+  <button onclick="restart()">Restart</button>
+</div>
+
+<script>
+const player=document.getElementById("player");
+const gameOverScreen=document.getElementById("gameOver");
+const startScreen=document.getElementById("start");
+const body=document.body;
+
+let y=0, velocity=0;
+let gravity=0.8;
+let jumpPower=-14;
+
+let running=false;
+let score=0;
+let obstacles=[];
+let spawnTimer=null;
+let speed=7;
+
+/* start */
+function startGame(){
+  startScreen.style.display="none";
+  reset();
+  running=true;
+  loop();
+  spawn();
+}
+
+/* reset */
+function reset(){
+  obstacles.forEach(o=>o.el.remove());
+  obstacles=[];
+  score=0;
+  speed=7;
+  document.getElementById("score").innerText="Score: 0";
+
+  y=0; velocity=0;
+  player.style.bottom="120px";
+
+  gameOverScreen.style.display="none";
+
+  clearTimeout(spawnTimer);
+}
+
+/* jump */
+function jump(){
+  if(!running) return;
+  if(y===0){
+    velocity=jumpPower;
+  }
+}
+
+/* input */
+document.addEventListener("keydown",e=>{
+  if(e.code==="Space") jump();
+});
+document.addEventListener("touchstart",jump);
+
+/* loop */
+function loop(){
+  if(!running) return;
+
+  velocity+=gravity;
+  y-=velocity;
+
+  if(y<0){y=0;velocity=0;}
+
+  player.style.bottom=(120+y)+"px";
+
+  /* running animation toggle */
+  if(y===0){
+    player.classList.add("running");
+  } else {
+    player.classList.remove("running");
+  }
+
+  const p=player.getBoundingClientRect();
+
+  obstacles.forEach(o=>{
+    const r=o.el.getBoundingClientRect();
+
+    if(!(r.right<p.left||r.left>p.right||r.bottom<p.top||r.top>p.bottom)){
+      running=false;
+      gameOverScreen.style.display="flex";
+      body.classList.add("shake");
+      setTimeout(()=>body.classList.remove("shake"),150);
+    }
+  });
+
+  requestAnimationFrame(loop);
+}
+
+/* spawn */
+function spawn(){
+  if(!running) return;
+
+  const el=document.createElement("div");
+  const type=Math.random()>0.5?"log":"rock";
+
+  el.className="obstacle "+type;
+  el.style.left="100%";
+  document.body.appendChild(el);
+
+  let x=window.innerWidth;
+
+  obstacles.push({el,x});
+
+  const move=setInterval(()=>{
+    if(!running){clearInterval(move);return;}
+
+    x-=speed;
+    el.style.left=x+"px";
+
+    if(x<-80){
+      el.remove();
+      obstacles=obstacles.filter(o=>o.el!==el);
+      clearInterval(move);
+
+      score++;
+      speed+=0.03;
+      document.getElementById("score").innerText="Score: "+score;
+
+      spawnTrail();
+    }
+  },16);
+
+  spawnTimer=setTimeout(spawn,1100);
+}
+
+/* ✨ trail effect */
+function spawnTrail(){
+  const t=document.createElement("div");
+  t.className="trail";
+  t.style.left="90px";
+  t.style.bottom=(120+y+10)+"px";
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),600);
+}
+
+/* restart */
+function restart(){
+  startGame();
+}
+</script>
+
+</body>
+</html>
