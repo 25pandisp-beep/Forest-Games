@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Forest Blocks</title>
+  <style>
+    canvas#fx{
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      z-index:0;
+    }
+
+    body{
+      margin:0;
+      min-height:100vh;
+      color:white;
+      font-family:Arial;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      position:relative;
+      background:#081c15;
+    }
+
+    /* FIX: ensure fog stays behind game */
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      z-index:-1;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.06), transparent 40%),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,0.04), transparent 45%),
+        radial-gradient(circle at 40% 80%, rgba(255,255,255,0.03), transparent 50%);
+      animation: drift 10s ease-in-out infinite;
+    }
+
+    @keyframes drift{
+      0%{transform:translate(0,0)}
+      50%{transform:translate(20px,15px)}
+      100%{transform:translate(0,0)}
+    }
+
+    /* forest stages (persistent + visible) */
+    body.stage1{ background:radial-gradient(circle at top,#2d6a4f,#081c15 70%); }
+    body.stage2{ background:radial-gradient(circle at top,#14532d,#052e16 70%); }
+    body.stage3{ background:radial-gradient(circle at top,#0f766e,#042f2e 70%); }
+    body.stage4{ background:radial-gradient(circle at top,#365314,#1a2e05 70%); }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(8,50px);
+      gap:3px;
+      margin-bottom:20px;
+      z-index:2;
+    }
+
+    .cell{
+      width:50px;
+      height:50px;
+      border-radius:8px;
+      background:rgba(255,255,255,0.08);
+      transition:0.15s;
+    }
+
+    .filled.stage1{background:#52b788;}
+    .filled.stage2{background:#40916c;}
+    .filled.stage3{background:#2a9d8f;}
+    .filled.stage4{background:#84cc16;}
+
+    /* ghost preview */
+    .preview{
+      background:rgba(255,255,255,0.35)!important;
+      box-shadow:0 0 10px rgba(255,255,255,0.35);
+    }
+
+    .tray{
+      display:flex;
+      gap:20px;
+      margin-top:10px;
+      z-index:2;
+    }
+
+    /* FIX: proper block preview layout */
+    .piece{
+      display:grid;
+      gap:2px;
+      padding:8px;
+      cursor:grab;
+      user-select:none;
+      touch-action:none;
+      transition:transform 0.2s;
+    }
+
+    .piece:hover{transform:scale(1.05)}
+
+    .block{
+      width:20px;
+      height:20px;
+      border-radius:4px;
+      background:#95d5b2;
+    }
+
+    #gameOver{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.75);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      z-index:10;
+    }
+
+    button{
+      padding:10px 16px;
+      margin:6px;
+      border:none;
+      border-radius:10px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body class="stage1">
+
+<canvas id="fx"></canvas>
+
+<h1>🪵 Forest Blocks</h1>
+<div id="score">Score: 0</div>
+
+<div class="grid" id="grid"></div>
+<div class="tray" id="tray"></div>
+
+<div id="gameOver">
+  <h1>Game Over 🌲</h1>
+  <button onclick="restart()">Restart</button>
+  <button onclick="location.href='index.html'">Back to Menu</button>
+</div>
+
+<script>
+const shapes=[
+  [[0,0],[1,0],[0,1],[1,1]],
+  [[0,0],[0,1],[0,2]],
+  [[0,0],[1,0],[2,0]],
+  [[0,0],[0,1],[1,1]]
+];
+
+let score=0;
+let activeShape=null;
+let previewCells=[];
+let stage=1;
+
+const grid=document.getElementById('grid');
+const tray=document.getElementById('tray');
+const cells=[];
+
+function setStage(){
+  stage=Math.min(4,1+Math.floor(score/300));
+  document.body.className='stage'+stage;
+}
+
+for(let i=0;i<64;i++){
+  const c=document.createElement('div');
+  c.className='cell';
+
+  c.addEventListener('dragover',e=>{
+    e.preventDefault();
+    showPreview(i);
+  });
+
+  c.addEventListener('drop',e=>{
+    e.preventDefault();
+    if(!activeShape) return;
+    if(canPlace(activeShape,i)) dropShape(i);
+    clearPreview();
+  });
+
+  grid.appendChild(c);
+  cells.push(c);
+}
+
+function newShape(){
+  return shapes[Math.floor(Math.random()*shapes.length)];
+}
+
+function createTray(){
+  tray.innerHTML='';
+
+  for(let i=0;i<3;i++){
+    const shape=newShape();
+
+    const piece=document.createElement('div');
+    piece.className='piece';
+    piece.draggable=true;
+    piece.dataset.shape=JSON.stringify(shape);
+
+    piece.addEventListener('dragstart',e=>{
+      activeShape=JSON.parse(piece.dataset.shape);
+      e.dataTransfer.setData('shape',piece.dataset.shape);
+    });
+
+    const maxX=Math.max(...shape.map(p=>p[0]));
+    const maxY=Math.max(...shape.map(p=>p[1]));
+
+    piece.style.gridTemplateColumns=`repeat(${maxX+1},20px)`;
+    piece.style.gridTemplateRows=`repeat(${maxY+1},20px)`;
+
+    for(let y=0;y<=maxY;y++){
+      for(let x=0;x<=maxX;x++){
+        const b=document.createElement('div');
+        b.className='block';
+        b.style.opacity=shape.some(s=>s[0]===x&&s[1]===y)?1:0;
+        piece.appendChild(b);
+      }
+    }
+
+    tray.appendChild(piece);
+  }
+
+  if(!hasMoves()) gameOver();
+}
+
+function canPlace(shape,index){
+  const x=index%8;
+  const y=Math.floor(index/8);
+
+  for(const [dx,dy] of shape){
+    const nx=x+dx;
+    const ny=y+dy;
+    if(nx>7||ny>7) return false;
+    const i=ny*8+nx;
+    if(cells[i].classList.contains('filled')) return false;
+  }
+  return true;
+}
+
+function showPreview(index){
+  clearPreview();
+  if(!activeShape) return;
+  if(!canPlace(activeShape,index)) return;
+
+  const x=index%8;
+  const y=Math.floor(index/8);
+
+  activeShape.forEach(([dx,dy])=>{
+    const i=(y+dy)*8+(x+dx);
+    if(cells[i]){
+      cells[i].classList.add('preview');
+      previewCells.push(cells[i]);
+    }
+  });
+}
+
+function clearPreview(){
+  previewCells.forEach(c=>c.classList.remove('preview'));
+  previewCells=[];
+}
+
+function dropShape(index){
+  const x=index%8;
+  const y=Math.floor(index/8);
+
+  activeShape.forEach(([dx,dy])=>{
+    const i=(y+dy)*8+(x+dx);
+    const cell=cells[i];
+    cell.classList.add('filled');
+    cell.classList.add('stage'+stage);
+  });
+
+  score+=activeShape.length*10;
+  updateScore();
+
+  checkLines();
+  setStage();
+
+  activeShape=null;
+  createTray();
+}
+
+function checkLines(){
+  let cleared=false;
+
+  for(let r=0;r<8;r++){
+    const row=cells.slice(r*8,r*8+8);
+    if(row.every(c=>c.classList.contains('filled'))){
+      row.forEach(c=>c.classList.remove('filled'));
+      score+=100;
+      cleared=true;
+    }
+  }
+
+  for(let c=0;c<8;c++){
+    const col=[];
+    for(let r=0;r<8;r++) col.push(cells[r*8+c]);
+    if(col.every(x=>x.classList.contains('filled'))){
+      col.forEach(x=>x.classList.remove('filled'));
+      score+=100;
+      cleared=true;
+    }
+  }
+
+  if(cleared){
+    document.body.style.filter='brightness(1.2)';
+    setTimeout(()=>document.body.style.filter='brightness(1)',300);
+  }
+}
+
+function hasMoves(){
+  const shapesInTray=Array.from(tray.children).map(p=>JSON.parse(p.dataset.shape));
+  for(const shape of shapesInTray){
+    for(let i=0;i<64;i++){
+      if(canPlace(shape,i)) return true;
+    }
+  }
+  return false;
+}
+
+function gameOver(){
+  document.getElementById('gameOver').style.display='flex';
+}
+
+function restart(){
+  cells.forEach(c=>c.className='cell');
+  score=0;
+  stage=1;
+  document.body.className='stage1';
+  updateScore();
+  document.getElementById('gameOver').style.display='none';
+  createTray();
+}
+
+function updateScore(){
+  document.getElementById('score').textContent='Score: '+score;
+}
+
+createTray();
+</script>
+</body>
+</html>
