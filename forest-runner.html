@@ -14,7 +14,7 @@ body{
   color:white;
 }
 
-/* 🌲 BACKGROUND */
+/* BACKGROUND */
 #sky{
   position:absolute;
   inset:0;
@@ -29,7 +29,6 @@ body{
     radial-gradient(circle at 70% 60%, rgba(255,255,255,0.03), transparent 60%);
 }
 
-/* trees */
 #trees{
   position:absolute;
   bottom:120px;
@@ -51,7 +50,7 @@ body{
   background:linear-gradient(#2d6a4f,#1b4332);
 }
 
-/* 🏃 PLAYER */
+/* PLAYER */
 #player{
   position:absolute;
   bottom:120px;
@@ -59,20 +58,16 @@ body{
   width:30px;
   height:50px;
   z-index:10;
-  transform-origin:bottom;
 }
 
-/* head */
 .head{
   width:18px;
   height:18px;
   background:#95d5b2;
   border-radius:50%;
   margin:0 auto;
-  box-shadow:0 0 10px rgba(0,255,150,0.3);
 }
 
-/* body */
 .body{
   width:12px;
   height:18px;
@@ -81,7 +76,7 @@ body{
   border-radius:4px;
 }
 
-/* legs animation */
+/* legs */
 .legs{
   position:absolute;
   bottom:0;
@@ -97,10 +92,8 @@ body{
   height:10px;
   background:#1b4332;
   border-radius:2px;
-  transform-origin:top;
 }
 
-/* running animation */
 .running .leg.left{
   animation:runL 0.25s infinite alternate;
 }
@@ -112,7 +105,6 @@ body{
   from{transform:rotate(-25deg)}
   to{transform:rotate(25deg)}
 }
-
 @keyframes runR{
   from{transform:rotate(25deg)}
   to{transform:rotate(-25deg)}
@@ -123,7 +115,6 @@ body{
   position:absolute;
   bottom:120px;
   border-radius:8px;
-  box-shadow:0 6px 10px rgba(0,0,0,0.4);
 }
 
 .log{
@@ -138,7 +129,7 @@ body{
   background:radial-gradient(circle,#6c757d,#343a40);
 }
 
-/* score */
+/* UI */
 #score{
   position:absolute;
   top:10px;
@@ -165,32 +156,14 @@ button{
   margin:6px;
 }
 
-/* ✨ motion effects */
-.shake{
-  animation:shake 0.15s;
-}
-
-@keyframes shake{
-  0%{transform:translate(0,0)}
-  25%{transform:translate(-2px,1px)}
-  50%{transform:translate(2px,-1px)}
-  75%{transform:translate(-1px,2px)}
-  100%{transform:translate(0,0)}
-}
-
-/* glow trail */
-.trail{
-  position:absolute;
-  width:8px;
-  height:8px;
-  background:#95d5b2;
-  border-radius:50%;
-  opacity:0.6;
-  animation:fade 0.6s linear forwards;
-}
-
-@keyframes fade{
-  to{opacity:0; transform:translateY(-20px)}
+/* MENU BUTTON (only visible on game over) */
+#menuBtn{
+  display:none;
+  padding:10px 14px;
+  background:rgba(0,0,0,0.5);
+  border-radius:10px;
+  cursor:pointer;
+  margin-top:10px;
 }
 </style>
 </head>
@@ -202,7 +175,6 @@ button{
 <div id="trees"></div>
 <div id="ground"></div>
 
-<!-- PLAYER -->
 <div id="player">
   <div class="head"></div>
   <div class="body"></div>
@@ -222,13 +194,14 @@ button{
 <div id="gameOver" class="screen" style="display:none;">
   <h1>Game Over</h1>
   <button onclick="restart()">Restart</button>
+  <div id="menuBtn" onclick="goMenu()">☰ Menu</div>
 </div>
 
 <script>
 const player=document.getElementById("player");
 const gameOverScreen=document.getElementById("gameOver");
 const startScreen=document.getElementById("start");
-const body=document.body;
+const menuBtn=document.getElementById("menuBtn");
 
 let y=0, velocity=0;
 let gravity=0.8;
@@ -240,27 +213,30 @@ let obstacles=[];
 let spawnTimer=null;
 let speed=7;
 
-/* start */
+/* START */
 function startGame(){
   startScreen.style.display="none";
-  reset();
+  resetGame();
   running=true;
   loop();
   spawn();
 }
 
-/* reset */
-function reset(){
+/* RESET (fix spawn bug) */
+function resetGame(){
   obstacles.forEach(o=>o.el.remove());
   obstacles=[];
   score=0;
   speed=7;
+
   document.getElementById("score").innerText="Score: 0";
 
-  y=0; velocity=0;
+  y=0;
+  velocity=0;
   player.style.bottom="120px";
 
   gameOverScreen.style.display="none";
+  menuBtn.style.display="none";
 
   clearTimeout(spawnTimer);
 }
@@ -273,7 +249,6 @@ function jump(){
   }
 }
 
-/* input */
 document.addEventListener("keydown",e=>{
   if(e.code==="Space") jump();
 });
@@ -290,7 +265,6 @@ function loop(){
 
   player.style.bottom=(120+y)+"px";
 
-  /* running animation toggle */
   if(y===0){
     player.classList.add("running");
   } else {
@@ -305,8 +279,7 @@ function loop(){
     if(!(r.right<p.left||r.left>p.right||r.bottom<p.top||r.top>p.bottom)){
       running=false;
       gameOverScreen.style.display="flex";
-      body.classList.add("shake");
-      setTimeout(()=>body.classList.remove("shake"),150);
+      menuBtn.style.display="block"; // ✅ SHOW MENU ONLY ON DEATH
     }
   });
 
@@ -342,27 +315,20 @@ function spawn(){
       score++;
       speed+=0.03;
       document.getElementById("score").innerText="Score: "+score;
-
-      spawnTrail();
     }
   },16);
 
   spawnTimer=setTimeout(spawn,1100);
 }
 
-/* ✨ trail effect */
-function spawnTrail(){
-  const t=document.createElement("div");
-  t.className="trail";
-  t.style.left="90px";
-  t.style.bottom=(120+y+10)+"px";
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),600);
-}
-
 /* restart */
 function restart(){
   startGame();
+}
+
+/* menu */
+function goMenu(){
+  window.location.href="index.html";
 }
 </script>
 
