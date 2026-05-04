@@ -1,157 +1,178 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Forest Arcade</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Forest Arcade</title>
 
-    body {
-      position: relative;
-      font-family: Arial, sans-serif;
-      min-height: 100vh;
-      overflow: hidden;
-      color: white;
-      transition: background 3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
 
-    .spring { background: linear-gradient(#7ed957, #2d6a4f); }
-    .summer { background: linear-gradient(#2d6a4f, #1b4332); }
-    .autumn { background: linear-gradient(#d97706, #7c2d12); }
-    .winter { background: linear-gradient(#94a3b8, #334155); }
+body{
+  font-family:Arial;
+  min-height:100vh;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  transition:background 2s ease;
+}
 
-    .menu {
-      position: relative;
-      z-index: 2;
-      text-align: center;
-      backdrop-filter: blur(10px);
-      background: rgba(0,0,0,0.25);
-      padding: 2rem;
-      border-radius: 20px;
-      width: min(90%, 900px);
-    }
+/* 🌦 SEASONS */
+.spring { background:linear-gradient(#7ed957,#2d6a4f); }
+.summer { background:linear-gradient(#2d6a4f,#1b4332); }
+.autumn { background:linear-gradient(#d97706,#7c2d12); }
+.winter { background:linear-gradient(#94a3b8,#334155); }
 
-    h1 {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-    }
+/* MENU */
+.menu{
+  position:relative;
+  z-index:2;
+  text-align:center;
+  padding:2rem;
+  border-radius:20px;
+  width:min(90%,900px);
+  background:rgba(0,0,0,0.25);
+  backdrop-filter:blur(10px);
+}
 
-    .subtitle {
-      margin-bottom: 2rem;
-      opacity: 0.9;
-    }
+h1{ font-size:3rem; margin-bottom:1rem; }
 
-    .games {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-    }
+.games{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+  gap:1rem;
+}
 
-    .game-card {
-      background: rgba(255,255,255,0.12);
-      border-radius: 16px;
-      padding: 1.5rem;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
+.game-card{
+  background:rgba(255,255,255,0.12);
+  border-radius:16px;
+  padding:1.5rem;
+  cursor:pointer;
+  transition:0.2s;
+}
 
-    .game-card:hover {
-      transform: scale(1.05);
-    }
+.game-card:hover{
+  transform:scale(1.05);
+  box-shadow:0 0 20px rgba(120,255,180,0.3);
+}
 
-    .coming-soon {
-      opacity: 0.6;
-    }
-  
+/* 🌲 LOADING SCREEN */
+#loader{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  background:#081c15;
+  z-index:10;
+}
 
-    .forest-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 0;
-      overflow: hidden;
-    }
+.spinner{
+  width:60px;
+  height:60px;
+  border:5px solid rgba(255,255,255,0.2);
+  border-top:5px solid #95d5b2;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+}
 
-    .tree {
-      position: absolute;
-      bottom: 0;
-      font-size: 7rem;
-      animation: sway 5s ease-in-out infinite;
-      transform-origin: bottom center;
-    }
+@keyframes spin{
+  to{transform:rotate(360deg);}
+}
 
-    .leaf {
-      position: absolute;
-      top: -10%;
-      font-size: 1.4rem;
-      animation: fall linear infinite;
-      opacity: 0.8;
-    }
+#loadingText{
+  margin-top:15px;
+  opacity:0.8;
+}
 
-    @keyframes sway {
-      0%,100% { transform: rotate(-1deg); }
-      50% { transform: rotate(1deg); }
-    }
+/* 🌲 FOREST BACKGROUND */
+.forest-layer{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+}
 
-    @keyframes fall {
-      from {
-        transform: translateY(-10vh) translateX(0);
-      }
-      to {
-        transform: translateY(110vh) translateX(60px);
-      }
-    }
-  </style>
+.tree{
+  position:absolute;
+  bottom:0;
+  font-size:6rem;
+  animation:sway 5s ease-in-out infinite;
+}
+
+@keyframes sway{
+  0%,100%{transform:rotate(-1deg);}
+  50%{transform:rotate(1deg);}
+}
+</style>
 </head>
+
 <body class="spring">
 
-  <div class="forest-layer">
-    <div class="tree" style="left:0%">🌲</div>
-    <div class="tree" style="left:12%; font-size:9rem;">🌳</div>
-    <div class="tree" style="left:28%">🌲</div>
-    <div class="tree" style="left:72%">🌳</div>
-    <div class="tree" style="left:88%">🌲</div>
+<!-- 🌲 BACKGROUND -->
+<div class="forest-layer">
+  <div class="tree" style="left:5%">🌲</div>
+  <div class="tree" style="left:20%;font-size:8rem;">🌳</div>
+  <div class="tree" style="left:70%">🌲</div>
+  <div class="tree" style="left:85%">🌳</div>
+</div>
 
-    <div class="leaf" style="left:10%; animation-duration:10s;">🍃</div>
-    <div class="leaf" style="left:35%; animation-duration:14s;">🍂</div>
-    <div class="leaf" style="left:65%; animation-duration:12s;">🍃</div>
-    <div class="leaf" style="left:85%; animation-duration:16s;">🍂</div>
-  </div>
+<!-- MENU -->
+<div class="menu">
+  <h1>🌲 Forest Arcade</h1>
 
-  <div class="menu">
-    <h1>🌲 Forest Arcade</h1>
-    <p class="subtitle">Choose your adventure</p>
+  <div class="games">
+    <div class="game-card" onclick="launch('forest-blocks.html')">
+      🪵 Forest Blocks
+    </div>
 
-    <div class="games">
-      <div class="game-card" onclick="location.href='games/blockblast.html'">
-        <h2>🪵 Forest Block Blast</h2>
-        <p>Puzzle adventure</p>
-      </div>
+    <div class="game-card" onclick="launch('forest-runner.html')">
+      🏃 Forest Runner
+    </div>
 
-      <div class="game-card coming-soon">
-        <h2>🍄 Coming Soon</h2>
-      </div>
-
-      <div class="game-card coming-soon">
-        <h2>🦊 Coming Soon</h2>
-      </div>
+    <div class="game-card">
+      🍄 Coming Soon
     </div>
   </div>
+</div>
 
-  <script>
-    const seasons = ['spring', 'summer', 'autumn', 'winter'];
-    let current = 0;
+<!-- LOADER -->
+<div id="loader">
+  <div class="spinner"></div>
+  <div id="loadingText">Loading forest...</div>
+</div>
 
-    setInterval(() => {
-      document.body.classList.remove(seasons[current]);
-      current = (current + 1) % seasons.length;
-      document.body.classList.add(seasons[current]);
-    }, 60000); // 1 minute
-  </script>
+<script>
+/* 🌦 SEASON SYSTEM (global feel) */
+const seasons=['spring','summer','autumn','winter'];
+let i=0;
+
+setInterval(()=>{
+  document.body.classList.remove(seasons[i]);
+  i=(i+1)%seasons.length;
+  document.body.classList.add(seasons[i]);
+},60000);
+
+/* 🏆 SIMPLE GLOBAL SAVE SYSTEM */
+function saveScore(game, score){
+  let data=JSON.parse(localStorage.getItem("forestScores")||"{}");
+  data[game]=Math.max(score||0, data[game]||0);
+  localStorage.setItem("forestScores",JSON.stringify(data));
+}
+
+/* 🎮 LOADING TRANSITION */
+function launch(game){
+  const loader=document.getElementById("loader");
+  loader.style.display="flex";
+
+  setTimeout(()=>{
+    window.location.href=game;
+  },1200);
+}
+</script>
 
 </body>
 </html>
